@@ -5,7 +5,14 @@
 ## 业务场景
 上游来自泵站温升告警与值班 SQL 文件。过去同事在表格记录列顺序、手动建索引后截取计划，存在参数版本混乱、前后结果不一致未发现、写入代价未记录三项痛点。本站生成固定 SELECT，在专用 5,000 行遥测库内串行建索引、采集执行计划、保存输入快照，交给可靠性复核人判断。
 
-模块：工作负载录入/编辑、候选列序设计、后台试验队列、真实结果对比/JSON 导出；管理员另有审计。核心实体 workloads / candidates / experiments，样本表 telemetry。
+模块：工作负载录入/编辑、候选列序设计、后台试验队列、真实结果对比/JSON 导出；管理员另有审计。核心实体 workloads / candidates / experiments，样本表 telemetry。告警侧还可补录、更正遥测并订阅变更批次。
+
+## 遥测变更订阅
+告警服务通过 `POST /telemetry`（补录）、`PATCH /telemetry/{id}`（更正）写入，`op` 为 insert/update 的变更事件与写入同一事务提交，回滚的写入不产生事件。订阅建好后先用 `POST /subscriptions/{id}/next` 按 `from_id` 分批读历史（`kind=history`，`op=snapshot`），读到 `backfill_high` 后自动转入 `kind=changes`，之后每批都是该订阅范围内的变更事件。每个订阅只保存两个游标，不复制整表；历史分批读的是实时表，并在切换点用 `seq_start` 接住期间的写入。
+
+服务端先把批次落库再交付，只有 `POST /subscriptions/{id}/batches/{batch_id}/ack` 后才推进游标；未确认的批次在服务重启后原样重发（同一 batch id、同一 events），重复确认幂等，乱序或未知确认返回 409/404。写入按 `seq` 全局有序：写入方在自身事务内锁 `telemetry_seq` 行分配序号，因此提交顺序即序号顺序，两笔并发写入即便逆序提交也不会漏发；读取方不取该锁。交付语义为至少一次，历史读取期间落地的更正会同时出现在历史快照和后续 update 事件中，下游需按 `telemetry_id` 幂等应用。
+
+接口与字段见 `backend/migrations/002_telemetry_feed.md`。
 
 ## 快速启动
 ```sh

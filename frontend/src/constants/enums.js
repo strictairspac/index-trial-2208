@@ -1,3 +1,5 @@
 export const ROLES={admin:'管理员',operator:'操作员',viewer:'观察员'};
 export const STATUSES={queued:'等待执行',running:'试验中',completed:'已完成',failed:'执行失败'};
 export const COLUMNS=['sensor_id','recorded_at','device_type','value'];
+export const CHANGE_OPS={insert:'补录',update:'更正',snapshot:'历史快照'};
+export const SUBSCRIPTION_PHASES={history:'读取历史',changes:'接收变更'};

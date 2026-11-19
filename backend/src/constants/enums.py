@@ -1,3 +1,6 @@
 ROLES=('admin','operator','viewer')
 STATUSES=('queued','running','completed','failed')
 COLUMNS=('sensor_id','recorded_at','device_type','value')
+DEVICE_TYPES=('pump','motor','valve')
+CHANGE_OPS=('snapshot','insert','update')
+SUBSCRIPTION_PHASES=('history','changes')
